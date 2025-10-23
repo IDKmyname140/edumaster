@@ -1,149 +1,856 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>EduMaster Learning</title>
-  <style>
-    body {
-      font-family: "Segoe UI", sans-serif;
-      margin: 0;
-      background: #fff8f0;
-      color: #3e2f1c;
-      line-height: 1.6;
-    }
-
-    header {
-      background-color: #6b4f3b;
-      color: #f9e79f;
-      padding: 30px 20px;
-      text-align: center;
-      position: relative;
-    }
-
-    .btn-top {
-      position: absolute;
-      right: 20px;
-      top: 20px;
-      background-color: #f4c542;
-      border: none;
-      color: #3e2f1c;
-      font-size: 16px;
-      padding: 10px 18px;
-      cursor: pointer;
-      border-radius: 6px;
-    }
-
-    .btn-top:hover {
-      background-color: #e0af18;
-    }
-
-    main {
-      max-width: 960px;
-      margin: 30px auto;
-      padding: 0 20px;
-    }
-
-    section {
-      margin-bottom: 40px;
-    }
-
-    h2 {
-      color: #86592d;
-      border-bottom: 2px solid #d3b17c;
-      padding-bottom: 5px;
-    }
-
-    ul {
-      padding-left: 20px;
-    }
-
-    footer {
-      background: #f4e2cd;
-      color: #4b3b29;
-      padding: 20px;
-      text-align: center;
-      font-size: 14px;
-    }
-
-    .card {
-      background-color: #fffdf9;
-      border: 1px solid #e7d6ba;
-      padding: 20px;
-      margin-top: 20px;
-      border-radius: 8px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Chat App</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for chat layout */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Dark Mode Body BG: gray-900 */
+            height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            color: #E5E7EB; /* Default light text */
+        }
+        #chat-window {
+            overflow-y: auto;
+            flex-grow: 1;
+            padding-bottom: 2rem; /* Space for the input bar */
+            scroll-behavior: smooth;
+        }
+        .message-bubble {
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.2), 0 1px 2px 0 rgba(0, 0, 0, 0.1); /* Slightly heavier shadow for dark mode contrast */
+        }
+        .gif-search-grid {
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        }
+    </style>
 </head>
 <body>
 
-  <header>
-    <button class="btn-top" onclick="getMaterial()">Get Material</button>
-    <h1>EduMaster Learning</h1>
-    <p>Accessible education. Adaptive curriculum. Anywhere.</p>
-  </header>
+    <!-- Main Application Container -->
+    <div id="app-container" class="flex flex-col h-screen w-full mx-auto bg-gray-800 shadow-xl overflow-hidden">
+        <!-- Content will be rendered here -->
+    </div>
 
-  <main>
-    <section>
-      <h2>About EduMaster</h2>
-      <p>
-        EduMaster Learning is a digital education platform built to provide high-quality, standards-aligned content for learners from elementary to high school. Our vision is to make education accessible, engaging, and personalized for every student, everywhere.
-      </p>
-      <p>
-        With a library of over 2,000 lessons, interactive exercises, and real-time feedback tools, EduMaster helps students master skills at their own pace. Whether you're at home, in the classroom, or learning on the go — EduMaster is your companion in learning.
-      </p>
-    </section>
+    <!-- Modal Container for GIPHY, Settings, and Confirmation -->
+    <div id="modal-overlay" class="fixed inset-0 hidden items-center justify-center z-50 p-4 bg-black bg-opacity-70">
+        <!-- Modal content will be dynamically loaded here -->
+    </div>
+    
+    <!-- Custom Message Box for Errors/Success -->
+    <div id="toast-message" class="fixed top-4 right-4 p-3 rounded-lg shadow-xl text-white hidden transition-opacity duration-300"></div>
 
-    <section>
-      <h2>Subjects We Cover</h2>
-      <ul>
-        <li><strong>Mathematics:</strong> Arithmetic, Algebra, Geometry, Data & Graphing</li>
-        <li><strong>Science:</strong> Life Science, Earth Science, Chemistry, Physics</li>
-        <li><strong>Language Arts:</strong> Reading, Writing, Grammar, Vocabulary</li>
-        <li><strong>Social Studies:</strong> History, Civics, Geography, World Cultures</li>
-        <li><strong>Enrichment:</strong> Art, Coding Basics, Financial Literacy, Health</li>
-      </ul>
-    </section>
+    <!-- Firebase CDN Imports -->
+    <script type="module">
+        // Import necessary Firebase modules including Firestore document functions for Admin/Settings
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, query, orderBy, onSnapshot, addDoc, Timestamp, setLogLevel, doc, setDoc, getDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    <section class="card">
-      <h2>Personalized Learning Paths</h2>
-      <p>
-        Our smart recommendation system adapts content to each learner’s pace and performance. Students can track their mastery levels, set learning goals, and receive badges for milestones achieved.
-      </p>
-    </section>
+        // --- 1. Global Setup and Configuration ---
+        
+        // Firebase Configuration: Hardcoded as requested by the user.
+        const firebaseConfig = {
+            apiKey: "AIzaSyCEqZKaOO6tGnx3_stgaga4QBHTFszdnlQ",
+            authDomain: "test-f439e.firebaseapp.com",
+            projectId: "test-f439e",
+            storageBucket: "test-f439e.firebasestorage.app",
+            messagingSenderId: "431703904875",
+            appId: "1:431703904875:web:5b93292172f07287eb572e",
+            measurementId: "G-28T89XEC5Z"
+        };
+        
+        // Critical environment variable for Firestore pathing.
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'; // Used for Firestore paths
 
-    <section class="card">
-      <h2>Tools for Educators</h2>
-      <p>
-        Teachers can assign lessons, monitor progress, and provide differentiated support using EduMaster’s educator dashboard. Detailed analytics help identify learning gaps and opportunities.
-      </p>
-    </section>
+        // GIPHY API Configuration
+        const GIPHY_KEY = "O0zSPrpSxI1V3iI3GSbtsTNj5YXjvCqtA"; // Your provided key
+        const ADMIN_CODE = "12345";
+        
+        // Firebase Instances
+        let app = null;
+        let auth = null;
+        let db = null;
+        let unsubscribeMessages = null; // To manage the real-time listener
 
-    <section class="card">
-      <h2>Why EduMaster?</h2>
-      <ul>
-        <li>Curriculum aligned with national standards</li>
-        <li>Multilingual support for diverse learners</li>
-        <li>Gamified elements for better engagement</li>
-        <li>Free access for public school classrooms</li>
-      </ul>
-    </section>
-  </main>
+        // Application State
+        let currentUser = null;
+        let messages = [];
+        let authMode = 'signIn'; // 'signIn' or 'signUp'
+        let isSearchingGifs = false;
+        let gifs = [];
+        let gifQuery = '';
+        let isAdmin = false; // New state for admin status
 
-  <footer>
-    &copy; 2025 EduMaster Learning. All rights reserved.
-  </footer>
+        // DOM Element References
+        const appContainer = document.getElementById('app-container');
+        const modalOverlay = document.getElementById('modal-overlay');
+        const toastMessage = document.getElementById('toast-message');
 
-  <script>
-    function getMaterial() {
-      const code = prompt("Enter your access code to download material:");
-      if (code === "1234") {
-        window.location.href = "material.html";
-      } else {
-        alert("Invalid code. Please try again.");
-      }
-    }
-  </script>
+        // --- 2. Utility and Helper Functions ---
+        
+        // Helper to generate a consistent color from a string (for avatars)
+        const stringToColor = (str) => {
+            let hash = 0;
+            if (!str) return '#10b981';
+            for (let i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            let color = '#';
+            for (let i = 0; i < 3; i++) {
+                const value = (hash >> (i * 8)) & 0xFF;
+                color += ('00' + value.toString(16)).substr(-2);
+            }
+            return color;
+        };
 
+        // Custom toast/message box (replacing alert())
+        const showToast = (message, isError = false) => {
+            toastMessage.textContent = message;
+            toastMessage.className = isError 
+                ? 'fixed top-4 right-4 p-3 rounded-lg shadow-xl text-white bg-red-600 z-50 transition-opacity duration-300' 
+                : 'fixed top-4 right-4 p-3 rounded-lg shadow-xl text-white bg-emerald-600 z-50 transition-opacity duration-300';
+            toastMessage.style.display = 'block';
+
+            setTimeout(() => {
+                toastMessage.style.display = 'none';
+            }, 3000);
+        };
+
+        // Scroll to the bottom of the chat window
+        const scrollToBottom = () => {
+            const chatWindow = document.getElementById('chat-window');
+            if (chatWindow) {
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            }
+        };
+
+        // --- 3. Firebase Initialization and Authentication ---
+
+        const initializeFirebase = () => {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            // setLogLevel('debug'); // Uncomment for verbose logs
+        };
+
+        const checkAdminStatus = async (user) => {
+            if (!db || !user) {
+                isAdmin = false;
+                return;
+            }
+            try {
+                // Private user settings path: /artifacts/{appId}/users/{userId}/settings/profile
+                const userDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'profile');
+                const docSnap = await getDoc(userDocRef);
+                isAdmin = docSnap.exists() && docSnap.data().isAdmin === true;
+                // Re-render chat screen to show/hide admin button
+                if (currentUser) renderChatScreen();
+            } catch (error) {
+                console.error("Error checking admin status:", error);
+                isAdmin = false;
+            }
+        };
+        
+        const setupAuthListeners = () => {
+            if (!auth) return;
+            onAuthStateChanged(auth, (user) => {
+                currentUser = user;
+                
+                // Set up or tear down message listener based on user state
+                if (currentUser) {
+                    setupMessageListener();
+                    // Check user's admin status from Firestore
+                    checkAdminStatus(currentUser);
+                } else {
+                    if (unsubscribeMessages) unsubscribeMessages();
+                    isAdmin = false; // Reset admin status on sign out
+                }
+                
+                render(); // Re-render the UI based on auth state (show chat or auth screen)
+            });
+        };
+
+        window.handleAuthSubmit = async (event) => {
+            event.preventDefault();
+            const form = event.target;
+            const email = form.email.value;
+            const password = form.password.value;
+            const displayName = form.displayName ? form.displayName.value : '';
+
+            if (!auth || !email || !password) {
+                showToast("Email and Password are required.", true);
+                return;
+            }
+            
+            try {
+                if (authMode === 'signUp') {
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    // Use a default display name if none is provided
+                    await updateProfile(userCredential.user, { displayName: displayName || email.split('@')[0] });
+                    showToast("Account created successfully!");
+                } else {
+                    await signInWithEmailAndPassword(auth, email, password);
+                    showToast("Signed in successfully!");
+                }
+            } catch (error) {
+                console.error("Auth Error:", error);
+                showToast(error.message, true);
+            }
+        };
+
+        window.handleSignOut = async () => {
+            if (!auth) return;
+            try {
+                await signOut(auth);
+                showToast("Signed out successfully!");
+            } catch (error) {
+                console.error("Sign Out Error:", error);
+                showToast("Failed to sign out.", true);
+            }
+        };
+        
+        window.setAuthMode = (mode) => {
+            authMode = mode;
+            renderAuthScreen();
+        };
+
+        // --- 4. Firestore and Messaging ---
+
+        const setupMessageListener = () => {
+            if (unsubscribeMessages) {
+                unsubscribeMessages(); // Clear existing listener
+            }
+            if (!db) return;
+
+            // Public Chat Path: /artifacts/{appId}/public/data/chat_messages
+            const messagesCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages');
+            
+            // Query: Order by 'timestamp' ascending
+            const q = query(messagesCollectionRef, orderBy('timestamp', 'asc'));
+
+            unsubscribeMessages = onSnapshot(q, (snapshot) => {
+                messages = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return {
+                        id: doc.id,
+                        ...data,
+                        timestamp: data.timestamp?.toDate ? data.timestamp.toDate() : new Date(),
+                        isGif: data.content && (data.content.startsWith('https://media.giphy.com/media/') || data.content.startsWith('https://giphy.com/gifs/'))
+                    };
+                });
+                renderMessages();
+                setTimeout(scrollToBottom, 100); // Ensure scroll happens after render
+            }, (error) => {
+                console.error("Firestore Message Snapshot Error:", error);
+                showToast("Error loading messages.", true);
+            });
+        };
+
+        window.handleSendMessage = async (event, gifUrl = null) => {
+            event.preventDefault();
+            
+            const messageInput = document.getElementById('message-input');
+            const messageContent = gifUrl || messageInput.value.trim();
+            
+            if (!db || !currentUser || !messageContent) return;
+
+            // Public Chat Path: /artifacts/{appId}/public/data/chat_messages
+            const messagesCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages');
+            
+            const displayName = currentUser.displayName || currentUser.email?.split('@')[0] || 'Anonymous';
+            
+            const newMessage = {
+                uid: currentUser.uid,
+                displayName: displayName,
+                email: currentUser.email || 'anonymous',
+                content: messageContent,
+                timestamp: Timestamp.now(),
+            };
+
+            try {
+                await addDoc(messagesCollectionRef, newMessage);
+                if (!gifUrl) messageInput.value = ''; // Clear input only for text messages
+                
+                // Close GIPHY picker if a GIF was sent
+                if (gifUrl) {
+                    window.hideGifPicker(); 
+                    gifQuery = '';
+                    gifs = [];
+                }
+            } catch (error) {
+                console.error("Error sending message:", error);
+                showToast("Failed to send message.", true);
+            }
+        };
+        
+        // --- 5. Admin and Settings Logic ---
+
+        window.promptAdminCode = () => {
+            if (!currentUser) {
+                showToast("Please sign in first.", true);
+                return;
+            }
+
+            const code = prompt("Enter the Admin Code (Hint: 12345):");
+
+            if (code === ADMIN_CODE) {
+                setAdminStatus(true);
+            } else if (code !== null) {
+                showToast("Incorrect Admin Code.", true);
+            }
+        };
+
+        const setAdminStatus = async (status) => {
+            if (!db || !currentUser) return;
+            // Private user settings path: /artifacts/{appId}/users/{userId}/settings/profile
+            const userDocRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'profile');
+            
+            try {
+                console.log(`Attempting to set isAdmin status to ${status} for UID: ${currentUser.uid}`);
+                await setDoc(userDocRef, { isAdmin: status }, { merge: true });
+                console.log("Firestore Write Successful: Admin flag set.");
+                
+                isAdmin = status;
+                showToast(status ? "Admin privileges granted! Clear Chat button is now visible." : "Admin privileges revoked.");
+                renderChatScreen(); // Re-render to show/hide the admin button
+            } catch (error) {
+                console.error("Error setting admin status (PROBABLE CAUSE: SECURITY RULES):", error);
+                showToast("Failed to update admin status. Check console for details (likely a security rule issue).", true);
+            }
+        };
+
+        window.clearAllMessages = async () => {
+            if (!isAdmin || !db) {
+                showToast("Access Denied. You must be an admin to clear the chat.", true);
+                return;
+            }
+            
+            // Use custom confirmation modal instead of native confirm()
+            window.showCustomConfirmation(
+                "Clear Chat History", 
+                "Are you SURE you want to DELETE ALL CHAT MESSAGES? This cannot be undone.", 
+                async () => {
+                    const chatRef = collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages');
+                    
+                    showToast("Clearing chat messages...", false);
+
+                    try {
+                        const snapshot = await getDocs(chatRef);
+                        const deletePromises = [];
+
+                        snapshot.docs.forEach(doc => {
+                            // Note: This delete operation requires the 'isAdmin' rule check to pass.
+                            deletePromises.push(deleteDoc(doc.ref));
+                        });
+
+                        await Promise.all(deletePromises);
+                        
+                        showToast(`Successfully deleted ${snapshot.size} messages.`, false);
+
+                    } catch (error) {
+                        console.error("Error clearing chat:", error);
+                        showToast("Failed to clear chat. Check console for details.", true);
+                    } finally {
+                        window.hideModal(); // Close the confirmation modal
+                    }
+                }
+            );
+        };
+        
+        window.handleSettingsUpdate = async (event) => {
+            event.preventDefault();
+            if (!currentUser || !auth) return;
+
+            const form = event.target;
+            const newDisplayName = form.newDisplayName.value.trim();
+            const newPhotoURL = form.newPhotoURL.value.trim();
+            
+            if (!newDisplayName) {
+                showToast("Display Name cannot be empty.", true);
+                return;
+            }
+
+            try {
+                const updates = {};
+                if (newDisplayName && newDisplayName !== currentUser.displayName) {
+                    updates.displayName = newDisplayName;
+                }
+                // Update profile picture, allowing null/empty string to clear it
+                if (newPhotoURL !== (currentUser.photoURL || '')) {
+                    updates.photoURL = newPhotoURL || null;
+                }
+                
+                if (Object.keys(updates).length > 0) {
+                    await updateProfile(currentUser, updates);
+                    showToast("Profile updated successfully! Re-rendering chat...");
+                    window.hideModal(); 
+                } else {
+                    showToast("No changes detected.", false);
+                    window.hideModal();
+                }
+            } catch (error) {
+                console.error("Error updating profile:", error);
+                showToast("Failed to update profile: " + error.message, true);
+            }
+        };
+        
+        window.showSettingsModal = () => {
+             if (!currentUser) {
+                 showToast("Please sign in to view settings.", true);
+                 return;
+            }
+            renderSettingsModal();
+            modalOverlay.classList.remove('hidden');
+            modalOverlay.classList.add('flex');
+        };
+
+        // --- 6. GIPHY Integration and Modals ---
+
+        window.showGifPicker = () => {
+            if (!currentUser) {
+                 showToast("Please sign in to send GIFs.", true);
+                 return;
+            }
+            renderGifPicker();
+            modalOverlay.classList.remove('hidden');
+            modalOverlay.classList.add('flex');
+        };
+
+        // Unified Modal Closer
+        window.hideModal = () => {
+            modalOverlay.classList.add('hidden');
+            modalOverlay.classList.remove('flex');
+            modalOverlay.innerHTML = '';
+        };
+
+        window.hideGifPicker = () => {
+            window.hideModal();
+        };
+
+        window.showCustomConfirmation = (title, message, onConfirm) => {
+            modalOverlay.innerHTML = `
+                <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm p-6 flex flex-col border border-gray-700">
+                    <h3 class="text-xl font-semibold text-gray-100 mb-4">${title}</h3>
+                    <p class="text-gray-300 mb-6">${message}</p>
+                    <div class="flex justify-end space-x-3">
+                        <button onclick="hideModal()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition">
+                            Cancel
+                        </button>
+                        <button id="confirm-action-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+                            Confirm Delete
+                        </button>
+                    </div>
+                </div>
+            `;
+            modalOverlay.classList.remove('hidden');
+            modalOverlay.classList.add('flex');
+            
+            document.getElementById('confirm-action-btn').onclick = onConfirm;
+        };
+
+
+        window.handleGifSearch = async (event) => {
+            event.preventDefault();
+            const input = document.getElementById('gif-search-input');
+            gifQuery = input.value.trim();
+            if (!gifQuery) return;
+            
+            isSearchingGifs = true;
+            const searchButton = document.getElementById('gif-search-button');
+            if (searchButton) {
+                searchButton.textContent = 'Searching...';
+                searchButton.disabled = true;
+            }
+            const resultsContainer = document.getElementById('gif-results');
+            if (resultsContainer) {
+                resultsContainer.innerHTML = '<div class="col-span-full text-center py-8 text-gray-400">Loading GIFs...</div>';
+            }
+
+
+            try {
+                const apiUrl = `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_KEY}&q=${gifQuery}&limit=20&rating=pg-13`;
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+                gifs = data.data || [];
+            } catch (error) {
+                console.error("GIPHY search error:", error);
+                showToast("Failed to search GIPHY.", true);
+                gifs = [];
+            } finally {
+                isSearchingGifs = false;
+                if (searchButton) {
+                    searchButton.textContent = 'Search';
+                    searchButton.disabled = false;
+                }
+                renderGifResults();
+            }
+        };
+
+        window.sendGif = (gifUrl) => {
+            window.handleSendMessage(new Event('submit'), gifUrl);
+        };
+        
+        // --- 7. Rendering Functions (DOM Manipulation) ---
+        
+        const createProfileAvatar = (user) => {
+            const displayName = user?.displayName || user?.email?.split('@')[0] || 'User';
+            const initial = displayName.charAt(0).toUpperCase();
+            const color = stringToColor(user?.uid || 'anon');
+            const photoURL = user?.photoURL;
+
+            // Use provided photoURL if available
+            if (photoURL) {
+                return `
+                    <img 
+                        src="${photoURL}" 
+                        alt="${displayName} avatar" 
+                        class="w-10 h-10 rounded-full object-cover shadow-md flex-shrink-0 border-2 border-emerald-500"
+                        onerror="this.onerror=null; this.src='https://placehold.co/40x40/374151/E5E7EB?text=${initial}'"
+                        title="${displayName} (${user?.email || 'Anonymous'})"
+                    />
+                `;
+            }
+
+            return `
+                <div 
+                    class="flex items-center justify-center w-10 h-10 rounded-full text-white font-bold text-sm shadow-md flex-shrink-0"
+                    style="background-color: ${color};"
+                    title="${displayName} (${user?.email || 'Anonymous'})"
+                >
+                    ${initial}
+                </div>
+            `;
+        };
+
+        const renderMessages = () => {
+            const chatWindow = document.getElementById('chat-window');
+            if (!chatWindow) return; // Only render if on chat screen
+
+            const messagesHtml = messages.map(message => {
+                const isMe = currentUser && message.uid === currentUser.uid;
+                const timeString = message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const avatarHtml = createProfileAvatar({
+                    displayName: message.displayName, 
+                    uid: message.uid, 
+                    email: message.email,
+                    photoURL: message.photoURL // Note: photoURL is not currently stored in the message doc, but included for completeness if that changed. The avatar creation uses current user profile data.
+                });
+                
+                // Fix for GIF loading to ensure scroll is correct. The scroll logic has to be tied to the image load event.
+                const contentHtml = message.isGif 
+                    ? `<img src="${message.content}" alt="GIPHY GIF" class="max-w-full rounded-lg" onload="document.getElementById('chat-window').scrollTop = document.getElementById('chat-window').scrollHeight;" onerror="this.style.display='none'">`
+                    : `<p class="break-words whitespace-pre-wrap">${message.content}</p>`;
+
+                return `
+                    <div class="flex mb-4 ${isMe ? 'justify-end' : 'justify-start'}">
+                        ${!isMe ? `<div class="mr-3 mt-1">${avatarHtml}</div>` : ''}
+                        
+                        <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[80%] md:max-w-[60%]">
+                            <span class="text-xs mb-1 ${isMe ? 'text-gray-400' : 'text-gray-300'}">
+                                ${message.displayName}
+                            </span>
+                            <div class="p-3 message-bubble rounded-lg shadow-lg ${isMe ? 'bg-emerald-500 text-white rounded-br-none' : 'bg-gray-700 text-gray-100 rounded-tl-none'}">
+                                ${contentHtml}
+                                <p class="mt-1 text-xs ${isMe ? 'text-emerald-200' : 'text-gray-400'} text-right">
+                                    ${timeString}
+                                </p>
+                            </div>
+                        </div>
+
+                        ${isMe ? `<div class="ml-3 mt-1">${createProfileAvatar(currentUser)}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            chatWindow.innerHTML = messagesHtml;
+            // Scroll to bottom is called after the snapshot listener finishes and on image load
+        };
+
+        const renderChatScreen = () => {
+            // Ensure currentUser is available before proceeding
+            if (!currentUser) {
+                renderAuthScreen();
+                return;
+            }
+            
+            const displayName = currentUser.displayName || currentUser.email?.split('@')[0] || 'Anonymous';
+            
+            appContainer.innerHTML = `
+                <!-- Header -->
+                <header class="p-4 bg-gray-800 shadow-lg flex justify-between items-center flex-shrink-0 border-b border-gray-700">
+                    <div class="flex items-center space-x-3">
+                        ${createProfileAvatar(currentUser)}
+                        <div>
+                            <h1 class="text-xl font-bold text-gray-100">Public Chat (${displayName})</h1>
+                            <p class="text-xs text-gray-400 truncate w-40 sm:w-auto" title="${currentUser.uid}">UID: ${currentUser.uid}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex space-x-3 items-center">
+                        <button onclick="showSettingsModal()" class="px-4 py-2 bg-gray-600 text-white font-medium rounded-lg hover:bg-gray-700 transition duration-150 shadow-md">
+                            Settings
+                        </button>
+                        ${isAdmin ? `
+                            <button onclick="clearAllMessages()" class="px-4 py-2 bg-red-800 text-white font-medium rounded-lg hover:bg-red-700 transition duration-150 shadow-md">
+                                Clear Chat (Admin)
+                            </button>
+                        ` : `
+                            <button onclick="promptAdminCode()" class="px-4 py-2 bg-yellow-600 text-white font-medium rounded-lg hover:bg-yellow-700 transition duration-150 shadow-md">
+                                Admin Access
+                            </button>
+                        `}
+                        <button onclick="handleSignOut()" class="px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition duration-150 shadow-md">
+                            Sign Out
+                        </button>
+                    </div>
+
+                </header>
+
+                <!-- Chat Messages Window -->
+                <div id="chat-window" class="flex-grow p-4 space-y-4 bg-gray-900 overflow-y-auto">
+                    <!-- Messages rendered here by renderMessages() -->
+                </div>
+
+                <!-- Message Input Footer -->
+                <div class="p-4 bg-gray-800 border-t border-gray-700 flex space-x-3 flex-shrink-0">
+                    <button onclick="showGifPicker()" class="p-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-150 shadow-md flex-shrink-0" title="Send a GIF">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                    </button>
+                    <form onsubmit="handleSendMessage(event)" class="flex-grow flex space-x-3">
+                        <input
+                            type="text"
+                            id="message-input"
+                            placeholder="Type a message..."
+                            class="flex-grow px-4 py-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 text-lg"
+                            required
+                        />
+                        <button
+                            type="submit"
+                            class="px-5 py-3 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition duration-150 shadow-md flex-shrink-0"
+                        >
+                            Send
+                        </button>
+                    </form>
+                </div>
+            `;
+            // Initial message render when switching screens
+            renderMessages(); 
+        };
+        
+        const renderAuthScreen = () => {
+            appContainer.innerHTML = `
+                <div class="flex items-center justify-center min-h-screen p-4 bg-gray-900">
+                    <div class="w-full max-w-md bg-gray-800 p-8 rounded-xl shadow-2xl border border-gray-700">
+                        <h2 class="text-3xl font-extrabold text-gray-100 text-center mb-6">
+                            ${authMode === 'signIn' ? 'Welcome Back!' : 'Create Account'}
+                        </h2>
+                        <form onsubmit="handleAuthSubmit(event)" class="space-y-4">
+                            ${authMode === 'signUp' ? `
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300">Display Name</label>
+                                    <input
+                                        type="text"
+                                        name="displayName"
+                                        placeholder="e.g., ChatMaster"
+                                        required
+                                        class="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-700 text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 transition duration-150 ease-in-out"
+                                    />
+                                </div>
+                            ` : ''}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300">Email Address</label>
+                                <input
+                                    type="email"
+                                    name="email"
+                                    required
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-700 text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 transition duration-150 ease-in-out"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300">Password</label>
+                                <input
+                                    type="password"
+                                    name="password"
+                                    required
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-700 text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 transition duration-150 ease-in-out"
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-lg text-lg font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition duration-150 ease-in-out"
+                            >
+                                ${authMode === 'signIn' ? 'Sign In' : 'Sign Up'}
+                            </button>
+                        </form>
+                        <p class="mt-6 text-center text-sm text-gray-400">
+                            ${authMode === 'signIn' ? "Don't have an account? " : "Already have an account? "}
+                            <button
+                                onclick="setAuthMode('${authMode === 'signIn' ? 'signUp' : 'signIn'}')"
+                                class="font-medium text-emerald-500 hover:text-emerald-400"
+                            >
+                                ${authMode === 'signIn' ? 'Sign Up' : 'Sign In'}
+                            </button>
+                        </p>
+                    </div>
+                </div>
+            `;
+        };
+        
+        const renderSettingsModal = () => {
+            if (!currentUser) return;
+
+            modalOverlay.innerHTML = `
+                <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg p-6 flex flex-col border border-gray-700">
+                    <div class="p-2 border-b border-gray-700 flex justify-between items-center flex-shrink-0">
+                        <h3 class="text-xl font-semibold text-gray-100">User Settings</h3>
+                        <button onclick="hideModal()" class="text-gray-400 hover:text-gray-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <form onsubmit="handleSettingsUpdate(event)" class="mt-4 space-y-4">
+                        <div class="flex items-center space-x-4">
+                            <div class="flex-shrink-0">
+                                ${createProfileAvatar(currentUser)}
+                            </div>
+                            <div class="flex-grow">
+                                <label for="newDisplayName" class="block text-sm font-medium text-gray-300">Display Name</label>
+                                <input
+                                    type="text"
+                                    id="newDisplayName"
+                                    value="${currentUser.displayName || ''}"
+                                    placeholder="Enter new display name"
+                                    required
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-700 text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="newPhotoURL" class="block text-sm font-medium text-gray-300">Profile Picture URL (Image)</label>
+                            <input
+                                type="url"
+                                id="newPhotoURL"
+                                value="${currentUser.photoURL || ''}"
+                                placeholder="Paste image URL here"
+                                class="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-700 text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+                            />
+                        </div>
+
+                        <button
+                            type="submit"
+                            class="w-full py-3 px-4 rounded-md shadow-lg text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition"
+                        >
+                            Save Profile Changes
+                        </button>
+                    </form>
+                </div>
+            `;
+        };
+
+
+        const renderGifResults = () => {
+            const resultsContainer = document.getElementById('gif-results');
+            if (!resultsContainer) return;
+            
+            if (gifs.length === 0 && !isSearchingGifs && gifQuery) {
+                resultsContainer.innerHTML = `<p class="col-span-full text-center py-8 text-gray-400">No GIFs found for "${gifQuery}". Try a different search term.</p>`;
+                return;
+            }
+
+            resultsContainer.innerHTML = gifs.map(gif => `
+                <div 
+                    class="cursor-pointer rounded-lg overflow-hidden shadow-md hover:shadow-xl transition duration-300 transform hover:scale-[1.02] border-4 border-transparent hover:border-emerald-400"
+                    onclick="sendGif('${gif.images.fixed_height.url}')"
+                >
+                    <img 
+                        src="${gif.images.fixed_height_small.url}" 
+                        alt="${gif.title || 'GIPHY GIF'}" 
+                        class="w-full h-32 object-cover"
+                    />
+                </div>
+            `).join('');
+        };
+
+        const renderGifPicker = () => {
+            modalOverlay.innerHTML = `
+                <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col border border-gray-700">
+                    <div class="p-4 border-b border-gray-700 flex justify-between items-center flex-shrink-0">
+                        <h3 class="text-xl font-semibold text-gray-100">Select a GIF</h3>
+                        <button onclick="hideModal()" class="text-gray-400 hover:text-gray-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <form onsubmit="handleGifSearch(event)" class="p-4 border-b border-gray-700 flex space-x-2 flex-shrink-0">
+                        <input
+                            type="text"
+                            id="gif-search-input"
+                            value="${gifQuery}"
+                            oninput="gifQuery = this.value"
+                            placeholder="Search for GIFs (e.g., 'high five')"
+                            class="flex-grow px-3 py-2 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+                        />
+                        <button 
+                            type="submit" 
+                            id="gif-search-button"
+                            class="px-4 py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition duration-150"
+                        >
+                            ${isSearchingGifs ? 'Searching...' : 'Search'}
+                        </button>
+                    </form>
+
+                    <div id="gif-results" class="p-4 overflow-y-auto grid gif-search-grid gap-3 flex-grow">
+                        <!-- GIF results rendered here -->
+                        <p class="col-span-full text-center py-8 text-gray-400">Search for a term to find GIFs!</p>
+                    </div>
+                </div>
+            `;
+            // Call render results immediately to show previous search or placeholder
+            renderGifResults();
+        };
+
+        // Main render function to switch between screens
+        const render = () => {
+            if (!auth || !db) {
+                appContainer.innerHTML = `
+                    <div class="flex items-center justify-center h-full text-gray-500 text-lg">
+                        Loading Firebase...
+                    </div>
+                `;
+                return;
+            }
+            
+            // Check if the user is authenticated (not null)
+            if (currentUser) {
+                renderChatScreen();
+            } else {
+                renderAuthScreen();
+            }
+        };
+
+        // --- 8. Application Entry Point ---
+        window.onload = () => {
+            initializeFirebase();
+            // Start the auth listener. It will check for existing sessions 
+            // or default to the auth screen via render().
+            setupAuthListeners();
+            // render() is now called inside setupAuthListeners
+        };
+
+    </script>
 </body>
 </html>
